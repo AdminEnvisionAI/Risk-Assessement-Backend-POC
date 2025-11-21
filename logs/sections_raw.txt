@@ -1,0 +1,1 @@
+I am designed to process and transform risk assessment structures provided as input. Without a specific risk assessment structure to analyze, I cannot generate a JSON array of risk categories and subcategories. Please provide the risk assessment structure content for me to process.
