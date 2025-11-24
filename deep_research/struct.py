@@ -39,12 +39,27 @@ class SectionOutput(BaseModel):
     search_results: List[SearchResults] = Field(..., description="The search results")
 
 
+# class ConclusionAndReferences(BaseModel):
+#     conclusion: str = Field(
+#         ..., 
+#         description="A comprehensive synthesis of the report's key findings and their implications, offering insightful closure and highlighting the significance of the research without introducing new information not covered in the report sections"
+#     )
+#     references: List[str] = Field(
+#         ..., 
+#         description="A curated list of 5-6 most relevant and authoritative sources formatted in a consistent academic citation style, selected to support key findings and represent the most critical sources for understanding the report content"
+#     )
+
 class ConclusionAndReferences(BaseModel):
-    conclusion: str = Field(
-        ..., 
-        description="A comprehensive synthesis of the report's key findings and their implications, offering insightful closure and highlighting the significance of the research without introducing new information not covered in the report sections"
+    """
+    A model to hold the final components of the research report, including
+    recommendations, conclusion, and a formatted reference list.
+    """
+    risk_mitigation_recommendations: str = Field(
+        description="A comprehensive, markdown-formatted string containing actionable risk mitigation recommendations."
     )
-    references: List[str] = Field(
-        ..., 
-        description="A curated list of 5-6 most relevant and authoritative sources formatted in a consistent academic citation style, selected to support key findings and represent the most critical sources for understanding the report content"
+    conclusion: str = Field(
+        description="A comprehensive, markdown-formatted string that synthesizes the overall risk assessment."
+    )
+    references: str = Field(
+        description="A markdown-formatted string containing a list of the 5-6 most crucial references, formatted as clickable links."
     )

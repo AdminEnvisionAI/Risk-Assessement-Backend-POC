@@ -2,87 +2,79 @@
   "risk_schema": {
     "version": "v1",
     "company_profile": {
-      "sector": "Eyewear Retail",
+      "sector": "Electric Vehicle (EV) Manufacturing",
       "key_geographies": [
-        "India",
-        "Southeast Asia",
-        "Middle East"
+        "India"
       ],
-      "business_model_notes": "Lenskart is an omnichannel eyewear retailer with a significant online presence and expanding physical stores. Revenue is driven by sales of eyeglasses, sunglasses, contact lenses, and related accessories. The company is focused on expanding its international presence and increasing its manufacturing capabilities.",
-      "assumptions": "The analysis assumes that Lenskart's IPO will proceed as planned and that FY25 profitability is sustainable. Limited information is available beyond general news articles and blog posts."
+      "business_model_notes": "Ola Electric focuses on designing, manufacturing, and selling electric scooters and potentially other EV products. Revenue is driven by vehicle sales, and future success depends on scaling production, managing costs, and maintaining technological competitiveness.",
+      "assumptions": "This schema assumes Ola Electric's primary market is India and that their initial focus remains on two-wheeled EVs. It also assumes that profitability and scaling production are key challenges."
     },
     "schema": {
       "external": {
         "Market & Competition": [
           {
-            "id": "intense_competition",
-            "label": "Intense competitive landscape",
-            "why_necessary": "The eyewear market is highly competitive, with both online and offline players, potentially impacting Lenskart's market share and profitability.",
-            "source_hint": "Industry reports, competitor analysis"
+            "id": "competitive_pricing_pressure",
+            "label": "Electric vehicle pricing pressure",
+            "why_necessary": "Intense competition in the EV market could force Ola Electric to lower prices, impacting profitability and market share.",
+            "source_hint": "Industry reports, competitor analysis, market research"
           },
           {
-            "id": "fluctuations_in_consumer_demand",
-            "label": "Fluctuations in consumer demand",
-            "why_necessary": "Changes in consumer preferences and spending habits could affect demand for Lenskart's products, especially in discretionary spending categories.",
-            "source_hint": "Market research reports, economic indicators"
+            "id": "raw_material_price_volatility",
+            "label": "Raw material cost fluctuations",
+            "why_necessary": "Fluctuations in the prices of key raw materials like lithium, nickel, and cobalt can significantly impact production costs and margins.",
+            "source_hint": "Industry reports, commodity market data"
+          },
+          {
+            "id": "regulatory_policy_changes",
+            "label": "Changes in government EV policies",
+            "why_necessary": "Changes in government subsidies, tax incentives, or emission standards could impact demand for Ola Electric's products.",
+            "source_hint": "Government announcements, regulatory filings, industry news"
           }
         ],
-        "Geopolitical & Economic": [
+        "Macroeconomic Factors": [
           {
-            "id": "dependence_on_chinese_suppliers",
-            "label": "Reliance on Chinese suppliers",
-            "why_necessary": "Lenskart's dependence on Chinese suppliers exposes it to geopolitical risks, trade tensions, and supply chain disruptions, impacting costs and availability.",
-            "source_hint": "Supply chain analysis, geopolitical reports"
-          },
-          {
-            "id": "currency_exchange_rate_volatility",
-            "label": "Currency exchange rate volatility",
-            "why_necessary": "Fluctuations in exchange rates, particularly INR vs. USD and CNY, can impact the cost of imported materials and the profitability of international operations.",
-            "source_hint": "Financial statements, economic forecasts"
+            "id": "economic_slowdown_india",
+            "label": "Economic slowdown in India",
+            "why_necessary": "An economic downturn in India could reduce consumer spending on discretionary items like electric vehicles, impacting sales.",
+            "source_hint": "Economic forecasts, GDP growth data, consumer confidence indices"
           }
         ]
       },
       "internal": {
-        "Financial Performance": [
+        "Operational Risks": [
           {
-            "id": "profitability_sustainability",
-            "label": "Sustainability of profitability",
-            "why_necessary": "Lenskart's recent profitability needs to be sustained to justify its valuation and investor confidence, especially after previous losses.",
-            "source_hint": "Financial statements, earnings reports"
+            "id": "manufacturing_quality_control",
+            "label": "Manufacturing quality control issues",
+            "why_necessary": "Defects or inconsistencies in manufacturing could lead to product recalls, warranty claims, and damage to brand reputation.",
+            "source_hint": "Customer reviews, warranty data, production reports"
           },
           {
-            "id": "working_capital_management",
-            "label": "Working capital management",
-            "why_necessary": "Efficient management of inventory and accounts receivable is crucial for maintaining liquidity and funding growth, especially with an expanding retail footprint.",
-            "source_hint": "Balance sheet analysis, cash flow statements"
+            "id": "supply_chain_disruptions",
+            "label": "Supply chain vulnerabilities",
+            "why_necessary": "Disruptions in the supply chain for critical components could lead to production delays and increased costs.",
+            "source_hint": "Supply chain audits, supplier risk assessments"
+          },
+          {
+            "id": "battery_performance_degradation",
+            "label": "Battery performance and lifespan",
+            "why_necessary": "Concerns about battery range, charging times, and lifespan could deter potential customers and impact long-term ownership costs.",
+            "source_hint": "Battery testing data, warranty claims, customer feedback"
           }
         ],
-        "Operational Execution": [
+        "Financial Risks": [
           {
-            "id": "supply_chain_resilience",
-            "label": "Supply chain resilience",
-            "why_necessary": "Maintaining a robust and diversified supply chain is critical to avoid disruptions and ensure timely delivery of products, given the reliance on overseas suppliers.",
-            "source_hint": "Supply chain audits, risk management reports"
-          },
-          {
-            "id": "inventory_management_efficiency",
-            "label": "Inventory management efficiency",
-            "why_necessary": "Effective inventory control is essential to minimize obsolescence and storage costs, especially with a wide range of products and fluctuating demand.",
-            "source_hint": "Inventory turnover ratios, warehouse management reports"
+            "id": "capital_expenditure_management",
+            "label": "Capital expenditure requirements",
+            "why_necessary": "Ola Electric requires significant capital investment to expand production capacity, develop new products, and build out charging infrastructure.",
+            "source_hint": "Financial statements, capital expenditure plans"
           }
         ],
-        "Strategic & Reputational": [
+        "Strategic Risks": [
           {
-            "id": "brand_reputation_management",
-            "label": "Brand reputation management",
-            "why_necessary": "Maintaining a positive brand image is crucial for attracting and retaining customers in the competitive eyewear market, especially with a strong online presence.",
-            "source_hint": "Customer reviews, social media monitoring"
-          },
-          {
-            "id": "omnichannel_integration",
-            "label": "Omnichannel integration effectiveness",
-            "why_necessary": "Seamless integration of online and offline channels is vital for providing a consistent customer experience and maximizing sales, requiring effective technology and logistics.",
-            "source_hint": "Customer journey analysis, technology infrastructure reports"
+            "id": "technology_obsolescence",
+            "label": "Technological obsolescence",
+            "why_necessary": "Rapid advancements in battery technology and EV design could render Ola Electric's products obsolete if they fail to innovate.",
+            "source_hint": "R&D spending, patent filings, technology trends"
           }
         ]
       }

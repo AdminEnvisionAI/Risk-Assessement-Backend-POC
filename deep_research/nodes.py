@@ -40,6 +40,169 @@ import json
 import re
 from . import db_manager
 import asyncio
+import requests
+from bs4 import BeautifulSoup
+from pypdf import PdfReader
+import io
+
+
+# async def content_extractor_node(state: ResearchState, config: RunnableConfig):
+#     """
+#     Downloads content from URLs, handling both HTML and PDF files,
+#     and replaces the original raw_content from Tavily search.
+#     """
+#     print("\n--- Node: Content Extractor ---")
+    
+#     updated_search_results = []
+#     search_results = state["search_results"]
+
+#     for search_result_group in search_results:
+#         # Create a new list to hold results with updated content
+#         processed_results_for_group = []
+        
+#         for result in search_result_group.results:
+#             print(f"-> Extracting content from: {result.url}")
+#             try:
+#                 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+#                 response = requests.get(result.url, headers=headers, timeout=10)
+#                 response.raise_for_status() # Raise an exception for bad status codes
+
+#                 # Clone the original result to modify its content
+#                 updated_result = result.copy()
+
+#                 if result.url.lower().endswith('.pdf'):
+#                     # Handle PDF files
+#                     with io.BytesIO(response.content) as f:
+#                         reader = PdfReader(f)
+#                         pdf_text = ""
+#                         for page in reader.pages:
+#                             pdf_text += page.extract_text() or ""
+                        
+#                         # Limit the content size to prevent overwhelming the LLM
+#                         updated_result.raw_content = pdf_text[:8000] # Increased limit for valuable PDFs
+#                         print("   ✓ Successfully extracted text from PDF.",updated_result.raw_content)
+
+#                 else:
+#                     # Handle HTML files
+#                     soup = BeautifulSoup(response.content, 'html.parser')
+#                     # A simple text extraction, can be improved (e.g., using newspaper3k)
+#                     for script in soup(["script", "style"]):
+#                         script.extract()
+                    
+#                     text = soup.get_text(separator='\n', strip=True)
+#                     updated_result.raw_content = text[:4000] # Standard limit for HTML
+#                     print("   ✓ Successfully scraped text from HTML.",updated_result.raw_content)
+
+#                 processed_results_for_group.append(updated_result)
+
+#             except requests.exceptions.RequestException as e:
+#                 print(f"   ✗ Failed to download {result.url}: {e}")
+#                 # Optionally, you can keep the original result with Tavily's snippet
+#                 # processed_results_for_group.append(result)
+#                 continue # Or just skip failed ones
+#             except Exception as e:
+#                 print(f"   ✗ An error occurred processing {result.url}: {e}")
+#                 continue
+
+#         # Add the processed group to the final list
+#         if processed_results_for_group:
+#             updated_search_results.append(
+#                 SearchResults(query=search_result_group.query, results=processed_results_for_group)
+#             )
+
+#     return {"search_results": updated_search_results}
+
+
+
+async def content_extractor_node(state: ResearchState, config: RunnableConfig):
+    """
+    Downloads content from URLs, handling both HTML and PDF files,
+    replaces the original raw_content from Tavily search, and saves a record
+    of the extracted content to the database for the current section.
+    """
+    print("\n--- Node: Content Extractor ---")
+    
+    # --- Step 1: Get necessary info from state and config ---
+    updated_search_results = []
+    search_results = state.get("search_results", [])
+    run_id = config["configurable"]["run_id"]
+    current_section_index = state.get("current_section_index", "unknown_section")
+    
+    # This list will hold records for DB logging
+    extracted_content_for_db = []
+
+    # --- Step 2: Loop through search results and extract content ---
+    for search_result_group in search_results:
+        processed_results_for_group = []
+        
+        for result in search_result_group.results:
+            print(f"-> Extracting content from: {result.url}")
+            full_content = ""
+            status = "failed"
+            
+            try:
+                headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+                response = requests.get(result.url, headers=headers, timeout=15)
+                response.raise_for_status()
+
+                updated_result = result.copy()
+
+                if result.url.lower().endswith('.pdf'):
+                    with io.BytesIO(response.content) as f:
+                        reader = PdfReader(f)
+                        pdf_text = "".join(page.extract_text() or "" for page in reader.pages)
+                        full_content = pdf_text
+                        updated_result.raw_content = full_content[:8000] # Content for the LLM
+                        status = "success_pdf"
+                        print("   ✓ Successfully extracted text from PDF.")
+                else:
+                    soup = BeautifulSoup(response.content, 'html.parser')
+                    for script_or_style in soup(["script", "style"]):
+                        script_or_style.decompose()
+                    text = soup.get_text(separator='\n', strip=True)
+                    full_content = text
+                    updated_result.raw_content = full_content[:4000] # Content for the LLM
+                    status = "success_html"
+                    print("   ✓ Successfully scraped text from HTML.")
+
+                processed_results_for_group.append(updated_result)
+
+            except Exception as e:
+                print(f"   ✗ An error occurred processing {result.url}: {e}")
+                status = f"failed_processing: {e}"
+            
+            # --- Step 3: Prepare a record of this extraction for the DB ---
+            extracted_content_for_db.append({
+                "url": result.url,
+                "title": result.title,
+                "status": status,
+                "query": getattr(search_result_group, 'query', 'N/A'),
+                # We save the full content to the DB, not the truncated version
+                "extracted_content": full_content 
+            })
+
+        if processed_results_for_group:
+            updated_search_results.append(
+                SearchResults(query=search_result_group.query, results=processed_results_for_group)
+            )
+            
+    # --- Step 4: Save all extracted content records to the database ---
+    if extracted_content_for_db:
+        step_name = f"section_{current_section_index}_content_extraction"
+        context = {
+            "section_name": getattr(state.get("section", {}), 'section_name', 'Unknown Section'),
+            "section_index": current_section_index
+        }
+        # The result_data is the list of records we prepared
+        result_data = {"sources_extracted": extracted_content_for_db}
+        
+        await db_manager.update_report_step(run_id, step_name, result_data, context)
+        print(f"✓ Saved records for {len(extracted_content_for_db)} extracted sources to DB for section {current_section_index}.")
+    
+    # --- Step 5: Return the updated search results for the next node in the graph ---
+    return {"search_results": updated_search_results}
+
+
 
 # ========= RISK ASSESSMENT NODES =========
 
@@ -82,7 +245,8 @@ async def risk_schema_designer_node(state: AgentState, config: RunnableConfig) -
             response = tavily_client.search(query=query, max_results=2, include_raw_content=False)
             for result in response.get("results", []):
                 content = result.get('content', '')[:500]  # Limit content
-                search_context += f"\n\nSource: {result.get('title', 'Unknown')}\n{content}\n"
+                # search_context += f"\n\nSource: {result.get('title', 'Unknown')}\n{content}\n"
+                search_context += f"\n\nSource: {result.get('title', 'Unknown')}\nURL: {result.get('url', 'N/A')}\nContent: {content}\n"
             await asyncio.sleep(0.2)
         except Exception as e:
             print(f"Search error: {e}")
@@ -176,7 +340,8 @@ async def risk_assessor_node(state: AgentState, config: RunnableConfig) -> Dict:
             response = tavily_client.search(query=query, max_results=2, include_raw_content=False)
             for result in response.get("results", []):
                 content = result.get('content', '')[:500]
-                search_context += f"\n\nSource: {result.get('title', 'Unknown')}\n{content}\n"
+                # search_context += f"\n\nSource: {result.get('title', 'Unknown')}\n{content}\n"
+                search_context += f"\n\nSource: {result.get('title', 'Unknown')}\nURL: {result.get('url', 'N/A')}\nContent: {content}\n"
             await asyncio.sleep(0.2)
         except Exception as e:
             print(f"Search error: {e}")
@@ -729,9 +894,57 @@ async def final_section_formatter_node(state: ResearchState, config: RunnableCon
     return {"final_section_content": [result.content]}
 
 
+# async def finalizer_node(state: AgentState, config: RunnableConfig):
+#     """
+#     Finalizes the research report by generating a conclusion, references, and combining all sections.
+#     """
+
+#     configurable = Configuration.from_runnable_config(config)
+#     llm = init_llm(
+#         provider=configurable.provider,
+#         model=configurable.model,
+#         temperature=configurable.temperature
+#     )
+
+#     extracted_search_results = []
+#     for search_results in state['search_results']:
+#         for search_result in search_results.results:
+#             extracted_search_results.append({"url": search_result.url, "title": search_result.title})
+
+#     finalizer_system_prompt = ChatPromptTemplate.from_messages([
+#         SystemMessagePromptTemplate.from_template(FINALIZER_SYSTEM_PROMPT_TEMPLATE),
+#         HumanMessagePromptTemplate.from_template(template="Section Contents: {final_section_content}\n\nSearches: {extracted_search_results}"),
+#     ])
+#     finalizer_llm = finalizer_system_prompt | llm.with_structured_output(ConclusionAndReferences)
+
+#     rate_limit_delay()
+#     result =await finalizer_llm.ainvoke({**state, "extracted_search_results": extracted_search_results})
+
+#     # Build the final report
+#     company_name = state.get("company_name", "Company")
+#     final_report = f"# Risk Assessment Report: {company_name}\n\n"
+#     final_report += "\n\n".join([section_content for section_content in state["final_section_content"]])
+#     final_report += "\n\n" + result.conclusion
+#     final_report += "\n\n# References\n\n" + "\n".join(["- "+reference for reference in result.references])
+#         # --- DB FINALIZE ---
+#     run_id = config["configurable"]["run_id"]
+#     # The result from the LLM (conclusion and references) is saved as the result of this step
+#     conclusion_and_refs_dict = {"conclusion": result.conclusion, "references": result.references}
+#     await db_manager.finalize_report_run(run_id, final_report, conclusion_and_refs_dict)
+#     # --- END DB FINALIZE ---
+    
+#     os.makedirs("reports", exist_ok=True)  
+#     with open(f"reports/{company_name} Risk Assessment Report.md", "w", encoding="utf-8") as f:
+#         f.write(final_report)
+
+#     return {"final_report_content": final_report}
+
+
+
 async def finalizer_node(state: AgentState, config: RunnableConfig):
     """
-    Finalizes the research report by generating a conclusion, references, and combining all sections.
+    Finalizes the research report by generating risk mitigation recommendations,
+    a conclusion, references, and combining all sections.
     """
 
     configurable = Configuration.from_runnable_config(config)
@@ -741,35 +954,54 @@ async def finalizer_node(state: AgentState, config: RunnableConfig):
         temperature=configurable.temperature
     )
 
-    extracted_search_results = []
-    for search_results in state['search_results']:
-        for search_result in search_results.results:
-            extracted_search_results.append({"url": search_result.url, "title": search_result.title})
+    # Collect all unique search results with titles and URLs
+    all_search_results = {}
+    for search_result_group in state.get('search_results', []):
+        for result in search_result_group.results:
+            if result.url not in all_search_results:
+                all_search_results[result.url] = result.title
+
+    # Create a clean list of dictionaries for the prompt
+    extracted_search_results = [{"title": title, "url": url} for url, title in all_search_results.items()]
 
     finalizer_system_prompt = ChatPromptTemplate.from_messages([
         SystemMessagePromptTemplate.from_template(FINALIZER_SYSTEM_PROMPT_TEMPLATE),
-        HumanMessagePromptTemplate.from_template(template="Section Contents: {final_section_content}\n\nSearches: {extracted_search_results}"),
+        HumanMessagePromptTemplate.from_template(template="Section Contents: {final_section_content}\n\nAll Available Sources: {sources_used}"),
     ])
+    
+    # Use the updated ConclusionAndReferences Pydantic model from struct.py
     finalizer_llm = finalizer_system_prompt | llm.with_structured_output(ConclusionAndReferences)
 
+    print("\nFinalizing report: Generating recommendations, conclusion, and references...")
     rate_limit_delay()
-    result =await finalizer_llm.ainvoke({**state, "extracted_search_results": extracted_search_results})
+    result = await finalizer_llm.ainvoke({
+        "final_section_content": state['final_section_content'],
+        "sources_used": json.dumps(extracted_search_results, indent=2)
+    })
 
-    # Build the final report
+    # Build the final report using the three new components
     company_name = state.get("company_name", "Company")
     final_report = f"# Risk Assessment Report: {company_name}\n\n"
-    final_report += "\n\n".join([section_content for section_content in state["final_section_content"]])
-    final_report += "\n\n" + result.conclusion
-    final_report += "\n\n# References\n\n" + "\n".join(["- "+reference for reference in result.references])
-        # --- DB FINALIZE ---
+    
+    # Add the main body content (all researched sections)
+    final_report += "\n\n".join(state["final_section_content"])
+    
+    # Add the new, structured final sections from the LLM
+    final_report += f"\n\n{result.risk_mitigation_recommendations}"
+    final_report += f"\n\n{result.conclusion}"
+    final_report += f"\n\n{result.references}"
+
+    # --- DB FINALIZE ---
     run_id = config["configurable"]["run_id"]
-    # The result from the LLM (conclusion and references) is saved as the result of this step
-    conclusion_and_refs_dict = {"conclusion": result.conclusion, "references": result.references}
-    await db_manager.finalize_report_run(run_id, final_report, conclusion_and_refs_dict)
+    # Save the entire structured result from the LLM
+    final_content_dict = result.dict()
+    await db_manager.finalize_report_run(run_id, final_report, final_content_dict)
     # --- END DB FINALIZE ---
     
-    os.makedirs("reports", exist_ok=True)  
-    with open(f"reports/{company_name} Risk Assessment Report.md", "w", encoding="utf-8") as f:
+    os.makedirs("reports", exist_ok=True)
+    report_filename = f"reports/{company_name.replace(' ', '_')}_Risk_Assessment_Report.md"
+    with open(report_filename, "w", encoding="utf-8") as f:
         f.write(final_report)
+    print(f"\n✓ Final report saved to: {report_filename}")
 
     return {"final_report_content": final_report}

@@ -259,7 +259,8 @@ async def generate_report(request: GenerateReportRequest, background_tasks: Back
 async def get_all_reports():
     """Retrieves a list of summaries for all reports in the database."""
     try:
-        all_report_docs = await ReportModel.find(ReportModel.status == "completed",
+        
+        all_report_docs = await ReportModel.find(
             sort=[("created_at", -1)],
             limit=100
         ).to_list()
