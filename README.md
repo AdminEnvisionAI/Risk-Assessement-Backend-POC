@@ -29,13 +29,7 @@ thread = {
 
 ## 🎮 Usage
 
-### 1. Edit the Company Name
-Open `main.py` and change the company name:
-```python
-COMPANY_NAME = "Tesla Inc"  # Change this to any company
-```
-
-### 2. Run the System
+### 1. Run the System
 ```bash
 python main.py
 ```
